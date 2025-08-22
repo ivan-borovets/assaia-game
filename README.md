@@ -1,6 +1,9 @@
 # Overview
 
-Some kind of game as a test task
+Connect game for Assaia
+
+See the original:
+https://connect4.gamesolver.org/
 
 ## Installation
 

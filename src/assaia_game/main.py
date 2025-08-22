@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Final
 
-LINE_LEN_TO_WIN: Final[int] = 4
+CONNECT_TO_WIN: Final[int] = 4
 DEFAULT_ROWS: Final[int] = 6
 DEFAULT_COLS: Final[int] = 7
+MIN_PLAYERS: Final[int] = 2
 DEFAULT_PLAYER_COUNT: Final[int] = 2
 MAX_ROWS: Final[int] = 20
 MAX_COLS: Final[int] = 20
@@ -11,20 +12,20 @@ EMPTY_CELL: Final[str] = "·"
 CELL_WIDTH: Final[int] = 3
 
 
-@dataclass(kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class Player:
     name: str
     symbol: str
 
 
-@dataclass(kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class Move:
     row: int
     col: int
     symbol: str
 
 
-@dataclass(kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class Board:
     rows: int = DEFAULT_ROWS
     cols: int = DEFAULT_COLS
@@ -32,11 +33,11 @@ class Board:
     _grid: list[list[str | None]] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        if not (LINE_LEN_TO_WIN <= self.rows <= MAX_ROWS):
-            raise ValueError(f"Rows must be between {LINE_LEN_TO_WIN} and {MAX_ROWS}.")
-        if not (LINE_LEN_TO_WIN <= self.cols <= MAX_COLS):
+        if not (CONNECT_TO_WIN <= self.rows <= MAX_ROWS):
+            raise ValueError(f"Rows must be between {CONNECT_TO_WIN} and {MAX_ROWS}.")
+        if not (CONNECT_TO_WIN <= self.cols <= MAX_COLS):
             raise ValueError(
-                f"Columns must be between {LINE_LEN_TO_WIN} and {MAX_COLS}."
+                f"Columns must be between {CONNECT_TO_WIN} and {MAX_COLS}."
             )
         self._grid = [[None] * self.cols for _ in range(self.rows)]
 
@@ -54,40 +55,50 @@ class Board:
         return self._grid[row][col]
 
     def available_columns(self) -> list[int]:
-        return [col for col in range(self.cols) if self._grid[0][col] is None]
+        first_row = self._grid[0]
+        return [col for col, cell in enumerate(first_row) if cell is None]
 
     @property
     def is_full(self) -> bool:
-        return all(self._grid[0][col] is not None for col in range(self.cols))
+        return None not in self._grid[0]
 
 
-@dataclass(kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class Referee:
-    line_len_to_win: int = LINE_LEN_TO_WIN
+    connect_to_win: int = CONNECT_TO_WIN
 
     def is_winning(self, board: Board, last: Move) -> bool:
         row, col, symbol = last.row, last.col, last.symbol
 
-        def count(delta_row: int, delta_col: int) -> int:
-            row_next, col_next, total = row + delta_row, col + delta_col, 0
+        def line_len(delta_row: int, delta_col: int) -> int:
+            total = 1
+            r, c = row + delta_row, col + delta_col
             while (
-                0 <= row_next < board.rows
-                and 0 <= col_next < board.cols
-                and board.symbol_at(row_next, col_next) == symbol
+                0 <= r < board.rows
+                and 0 <= c < board.cols
+                and board.symbol_at(r, c) == symbol
             ):
                 total += 1
-                row_next += delta_row
-                col_next += delta_col
+                r += delta_row
+                c += delta_col
+            r, c = row - delta_row, col - delta_col
+            while (
+                0 <= r < board.rows
+                and 0 <= c < board.cols
+                and board.symbol_at(r, c) == symbol
+            ):
+                total += 1
+                r -= delta_row
+                c -= delta_col
             return total
 
-        for delta_row, delta_col in ((0, 1), (1, 0), (1, 1), (1, -1)):
-            in_line = 1 + count(delta_row, delta_col) + count(-delta_row, -delta_col)
-            if in_line >= self.line_len_to_win:
+        for dr, dc in ((0, 1), (1, 0), (1, 1), (1, -1)):
+            if line_len(dr, dc) >= self.connect_to_win:
                 return True
         return False
 
 
-@dataclass(kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class ConsoleUI:
     empty_cell: str = EMPTY_CELL
     cell_width: int = CELL_WIDTH
@@ -96,6 +107,7 @@ class ConsoleUI:
         col_w = self.cell_width
         row_w = max(2, len(str(board.rows)))
         indent = " " * (row_w + 1)
+
         header = (
             indent
             + "│"
@@ -104,23 +116,19 @@ class ConsoleUI:
         )
         top = indent + "┌" + "┬".join("─" * col_w for _ in range(board.cols)) + "┐"
         bottom = indent + "└" + "┴".join("─" * col_w for _ in range(board.cols)) + "┘"
+
         print(header)
         print(top)
         for row in range(board.rows):
-            cells = (
-                board.symbol_at(row, col) or self.empty_cell
+            cells = [
+                f"{(board.symbol_at(row, col) or self.empty_cell):^{col_w}}"
                 for col in range(board.cols)
-            )
-            line = (
-                f"{board.rows - row:>{row_w}} "
-                + "│"
-                + "│".join(f"{s:^{col_w}}" for s in cells)
-                + "│"
-            )
+            ]
+            line = f"{board.rows - row:>{row_w}} " + "│" + "│".join(cells) + "│"
             print(line)
         print(bottom)
 
-    def prompt_int(
+    def prompt_number(
         self,
         prompt: str,
         default: int | None = None,
@@ -128,14 +136,15 @@ class ConsoleUI:
         min_value: int = 0,
         max_value: int | None = None,
     ) -> int:
-        default_hint = f" [{default}]" if default is not None else ""
+        hint = f" [{default}]" if default is not None else ""
         while True:
-            raw = input(f"{prompt}{default_hint}: ").strip()
+            raw = input(f"{prompt}{hint}: ").strip()
             value_str = raw or (str(default) if default is not None else "")
-            if not value_str.isdigit():
+            try:
+                value = int(value_str)
+            except ValueError:
                 print("Enter a valid integer.")
                 continue
-            value = int(value_str)
             if value < min_value or (max_value is not None and value > max_value):
                 hi = f" and ≤ {max_value}" if max_value is not None else ""
                 print(f"Value must be ≥ {min_value}{hi}.")
@@ -150,11 +159,11 @@ class ConsoleUI:
                 else ("O" if index == 1 else chr(65 + (index - 2) % 26))
             )
 
-        count = self.prompt_int(
-            "Number of players (≥2)", default=default_count, min_value=2
+        count = self.prompt_number(
+            "Number of players (≥2)", default=default_count, min_value=MIN_PLAYERS
         )
         players: list[Player] = []
-        used_symbols: set[str] = set()
+        used: set[str] = set()
         for index in range(count):
             name_default = f"Player {index + 1}"
             name = (
@@ -162,35 +171,33 @@ class ConsoleUI:
                 or name_default
             )
             while True:
-                suggestion = suggest_symbol(index)
-                symbol = (
-                    input(f"{name} symbol (single character) [{suggestion}]: ").strip()
-                    or suggestion
-                )
+                symbol = input(
+                    f"{name} symbol (single character) [{suggest_symbol(index)}]: "
+                ).strip() or suggest_symbol(index)
                 if len(symbol) != 1:
                     print("Symbol must be exactly one character.")
                     continue
-                if symbol in used_symbols:
+                if symbol in used:
                     print("Symbol already taken. Choose another.")
                     continue
-                used_symbols.add(symbol)
+                used.add(symbol)
+                players.append(Player(name=name, symbol=symbol))
                 break
-            players.append(Player(name=name, symbol=symbol))
         return players
 
     def prompt_board_setup(self) -> tuple[int, int, int]:
-        rows = self.prompt_int(
-            "Rows", default=DEFAULT_ROWS, min_value=LINE_LEN_TO_WIN, max_value=MAX_ROWS
+        rows = self.prompt_number(
+            "Rows", default=DEFAULT_ROWS, min_value=CONNECT_TO_WIN, max_value=MAX_ROWS
         )
-        cols = self.prompt_int(
+        cols = self.prompt_number(
             "Columns",
             default=DEFAULT_COLS,
-            min_value=LINE_LEN_TO_WIN,
+            min_value=CONNECT_TO_WIN,
             max_value=MAX_COLS,
         )
-        connect = self.prompt_int(
+        connect = self.prompt_number(
             "In-a-row to win",
-            default=LINE_LEN_TO_WIN,
+            default=CONNECT_TO_WIN,
             min_value=3,
             max_value=max(rows, cols),
         )
@@ -214,7 +221,7 @@ class ConsoleUI:
                 print(f"Column must be 1..{board.cols}.")
 
 
-@dataclass(kw_only=True)
+@dataclass(slots=True, kw_only=True)
 class Game:
     board: Board
     players: list[Player]
@@ -222,15 +229,15 @@ class Game:
     referee: Referee | None = None
 
     def __post_init__(self) -> None:
-        if len(self.players) < 2:
-            raise ValueError("Need at least two players.")
+        if len(self.players) < MIN_PLAYERS:
+            raise ValueError(f"Need at least {MIN_PLAYERS} players.")
         symbols = [p.symbol for p in self.players]
         if any(len(s) != 1 for s in symbols):
             raise ValueError("Each player symbol must be a single character.")
         if len(set(symbols)) != len(symbols):
             raise ValueError("Player symbols must be unique.")
         if self.referee is None:
-            self.referee = Referee(line_len_to_win=LINE_LEN_TO_WIN)
+            self.referee = Referee(connect_to_win=CONNECT_TO_WIN)
 
     def run(self) -> None:
         print("CONNECT 4 — hotseat")
@@ -243,8 +250,7 @@ class Game:
             last = self.board.place_symbol(col, current.symbol)
             print()
             self.ui.render_board(self.board)
-            assert self.referee is not None
-            if self.referee.is_winning(self.board, last):
+            if self.referee and self.referee.is_winning(self.board, last):
                 print(f"\nWinner: {current.name} ({current.symbol})")
                 return
             if self.board.is_full:
@@ -256,10 +262,10 @@ class Game:
 def setup() -> Game:
     ui = ConsoleUI()
     print("Game setup (press Enter for defaults).")
-    rows, cols, connect = ui.prompt_board_setup()
+    rows, cols, connect_to_win = ui.prompt_board_setup()
     players = ui.prompt_players(default_count=DEFAULT_PLAYER_COUNT)
     board = Board(rows=rows, cols=cols)
-    referee = Referee(line_len_to_win=connect) if connect != LINE_LEN_TO_WIN else None
+    referee = Referee(connect_to_win=connect_to_win)
     return Game(board=board, players=players, ui=ui, referee=referee)
 
 
