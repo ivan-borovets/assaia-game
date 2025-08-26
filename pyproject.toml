@@ -18,11 +18,24 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
+    "mypy==1.17.1",
+    "pre-commit==4.2.0",
     "ruff==0.11.2",
+    "slotscheck>=0.19.1",
 ]
 
 [project.scripts]
-assaia = "assaia_game.main:main"
+assaia = "assaia_game.run:main"
+
+[tool.mypy]
+files = [
+    "src",
+]
+strict = true
+ignore_missing_imports = true
+allow_subclassing_any = true
+disallow_untyped_defs = false
+plugins = []
 
 [tool.ruff]
 line-length = 88
@@ -69,10 +82,23 @@ select = [
     "W", # pycodestyle-warning        https://docs.astral.sh/ruff/rules/#warning-w
 ]
 ignore = [
+    "PLR0913", # too-many-arguments
     "PLR6301", # no-self-use
+    "T201", # print
 ]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-wrap-aliases = true
 split-on-trailing-comma = true
+
+[tool.ruff.lint.per-file-ignores]
+"src/assaia_game/domain/referee.py" = ["PLR1702", ]           # too-many-nested-blocks
+"src/assaia_game/domain/lobby.py" = ["TC001", ]               # typing-only-first-party-import
+"src/assaia_game/presentation/cli_inputter.py" = [
+    "C901", # complex-structure
+    "PLR0912", # too-many-branches
+]
+
+[tool.slotscheck]
+strict-imports = true
