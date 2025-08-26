@@ -6,20 +6,20 @@ from assaia_game.application.play_turn import (
 from assaia_game.application.read_models import BoardReadModel
 from assaia_game.application.types import SessionId
 from assaia_game.presentation.cli_inputter import CliInputter
-from assaia_game.presentation.cli_presenter import CliPresenter
+from assaia_game.presentation.cli_renderer import CliRenderer
 
 
 class CliPlayTurnController:
-    __slots__ = ("_inputter", "_interactor", "_presenter")
+    __slots__ = ("_inputter", "_interactor", "_renderer")
 
     def __init__(
         self,
         inputter: CliInputter,
-        presenter: CliPresenter,
+        renderer: CliRenderer,
         interactor: PlayTurnInteractor,
     ) -> None:
         self._inputter = inputter
-        self._presenter = presenter
+        self._renderer = renderer
         self._interactor = interactor
 
     def run(
@@ -43,7 +43,7 @@ class CliPlayTurnController:
         response = self._interactor.execute(
             PlayTurnRequest(session_id=session_id, col=col)
         )
-        self._presenter.show_turn_update(
+        self._renderer.show_turn_update(
             board_read_model=response.board_read_model,
             game_status=response.game_status,
             mover_name=response.mover_name,

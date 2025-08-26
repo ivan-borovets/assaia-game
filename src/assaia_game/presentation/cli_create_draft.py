@@ -8,7 +8,7 @@ from assaia_game.application.types import DraftId
 from assaia_game.domain.board import Board
 from assaia_game.domain.referee import Referee
 from assaia_game.presentation.cli_inputter import CliInputter
-from assaia_game.presentation.cli_presenter import CliPresenter
+from assaia_game.presentation.cli_renderer import CliRenderer
 from assaia_game.setup.config import GameDefaults
 
 
@@ -19,22 +19,22 @@ class CreateDraftUIResult:
 
 
 class CliCreateDraftController:
-    __slots__ = ("_defaults", "_inputter", "_interactor", "_presenter")
+    __slots__ = ("_defaults", "_inputter", "_interactor", "_renderer")
 
     def __init__(
         self,
         inputter: CliInputter,
-        presenter: CliPresenter,
+        renderer: CliRenderer,
         interactor: CreateDraftInteractor,
         defaults: GameDefaults,
     ) -> None:
         self._inputter = inputter
-        self._presenter = presenter
+        self._renderer = renderer
         self._interactor = interactor
         self._defaults = defaults
 
     def run(self) -> CreateDraftUIResult:
-        self._presenter.show_setup_intro()
+        self._renderer.show_setup_intro()
         rows = self._inputter.ask_int(
             label="Rows",
             default=self._defaults.rows,
@@ -57,7 +57,7 @@ class CliCreateDraftController:
         response = self._interactor.execute(
             CreateDraftRequest(rows=rows, cols=cols, connect_to_win=connect)
         )
-        self._presenter.show_draft_created(
+        self._renderer.show_draft_created(
             min_players=response.min_players, max_players=response.max_players
         )
 

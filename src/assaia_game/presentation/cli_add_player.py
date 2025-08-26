@@ -7,22 +7,22 @@ from assaia_game.application.add_player import (
 )
 from assaia_game.application.types import DraftId
 from assaia_game.presentation.cli_inputter import CliInputter
-from assaia_game.presentation.cli_presenter import CliPresenter
+from assaia_game.presentation.cli_renderer import CliRenderer
 from assaia_game.setup.config import GameDefaults
 
 
 class CliAddPlayerController:
-    __slots__ = ("_defaults", "_inputter", "_interactor", "_presenter")
+    __slots__ = ("_defaults", "_inputter", "_interactor", "_renderer")
 
     def __init__(
         self,
         inputter: CliInputter,
-        presenter: CliPresenter,
+        renderer: CliRenderer,
         interactor: AddPlayerInteractor,
         defaults: GameDefaults,
     ) -> None:
         self._inputter = inputter
-        self._presenter = presenter
+        self._renderer = renderer
         self._interactor = interactor
         self._defaults = defaults
 
@@ -56,7 +56,7 @@ class CliAddPlayerController:
                 symbol=player_input.symbol,
             )
         )
-        self._presenter.show_player_added(
+        self._renderer.show_player_added(
             lobby_size=response.lobby_size,
             players_total=players_total,
             player_name=response.player_name,

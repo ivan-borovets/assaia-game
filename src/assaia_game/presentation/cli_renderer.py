@@ -2,7 +2,7 @@ from assaia_game.application.read_models import BoardReadModel
 from assaia_game.domain.game_status import GameStatus
 
 
-class CliPresenter:
+class CliRenderer:
     __slots__ = (
         "_cell_empty_symbol",
         "_cell_width",

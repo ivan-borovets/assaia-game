@@ -9,7 +9,7 @@ from assaia_game.presentation.cli_engine import CliGameEngine
 from assaia_game.presentation.cli_finalize_draft import CliFinalizeDraftController
 from assaia_game.presentation.cli_inputter import CliInputter
 from assaia_game.presentation.cli_play_turn import CliPlayTurnController
-from assaia_game.presentation.cli_presenter import CliPresenter
+from assaia_game.presentation.cli_renderer import CliRenderer
 from assaia_game.setup.config import GameDefaults
 
 
@@ -28,7 +28,7 @@ def build_cli_game(defaults: GameDefaults | None = None) -> CliGameEngine:
 
     # IO
     inputter = CliInputter(prompt_prefix=defaults.prompt_prefix)
-    presenter = CliPresenter(
+    renderer = CliRenderer(
         cell_width=defaults.cell_width,
         cell_empty_symbol=defaults.cell_empty_symbol,
         row_label_min_width=defaults.row_label_min_width,
@@ -38,21 +38,21 @@ def build_cli_game(defaults: GameDefaults | None = None) -> CliGameEngine:
     # Controllers
     create_draft_c = CliCreateDraftController(
         inputter=inputter,
-        presenter=presenter,
+        renderer=renderer,
         interactor=create_draft_i,
         defaults=defaults,
     )
     add_player_c = CliAddPlayerController(
         inputter=inputter,
-        presenter=presenter,
+        renderer=renderer,
         interactor=add_player_i,
         defaults=defaults,
     )
     finalize_draft_c = CliFinalizeDraftController(
-        interactor=finalize_draft_i, presenter=presenter
+        interactor=finalize_draft_i, renderer=renderer
     )
     play_turn_c = CliPlayTurnController(
-        inputter=inputter, presenter=presenter, interactor=play_turn_i
+        inputter=inputter, renderer=renderer, interactor=play_turn_i
     )
 
     # Engine
